@@ -18,12 +18,11 @@
   "author": "Isaac Wolkerstorfer <i@agnoster.net> (http://agnoster.net/)",
   "license": "MIT",
   "dependencies": {
-    "bufferedstream": "^3.1.0",
     "colors": "0.6.0-1",
     "optimist": "~0.3.5"
   },
   "devDependencies": {
-    "tap": "^0.5.0"
+    "tap": "^12.0.1"
   },
   "engines": {
     "node": "~0.10.0"

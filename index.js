@@ -1,5 +1,5 @@
 var net = require('net')
-  , BufferedStream = require('bufferedstream')
+var PassThrough = require('stream').PassThrough
 
 var ERR_MSG =
   { MULTIPLE_FWD:
@@ -54,6 +54,8 @@ function parseHost(host) {
  */
 function duplicator(cb) {
 
+  var forwards = {}
+
   /**
    * Internal: Connect to the given host, call the callback with the connection
    * if successful.
@@ -64,6 +66,11 @@ function duplicator(cb) {
     var connection = host(function() {
       cb(null, connection)
     })
+	
+	  connection.on('close', function() {
+	    cb(true, connection)
+    })
+	
 
     connection.on('error', function(err) {
       cb(err)
@@ -83,7 +90,7 @@ function duplicator(cb) {
   function pipe(client, host, forwardResponse) {
     // Create a paused BufferedStream and pipe the client in, so we don't
     // miss any events
-    var buffer = new BufferedStream
+    var buffer = new PassThrough()
     buffer.pause()
     client.pipe(buffer)
 
@@ -91,6 +98,13 @@ function duplicator(cb) {
     // back to the original connection if forwardResponse is truthy
     connect(host, function(err, connection) {
       if (err) {
+        let forwardClient = forwards[client.remoteAddress + ":" + client.remotePort]
+        forwardClient.forEach(function(item, index, array) {
+          if (item.host == connection.remoteAddress + ":" + connection.remotePort) {
+            item.connection = false;
+          }
+        })
+        
         if (forwardResponse) {
           console.error(ERR_MSG.FWD_CONN_ERROR, err)
           client.end()
@@ -98,7 +112,13 @@ function duplicator(cb) {
         buffer.end()
         return
       }
-      if (forwardResponse) connection.pipe(client)
+
+      if (forwardResponse)  { 
+        connection.pipe(client)
+      } else {
+        let forwardClient = forwards[client.remoteAddress + ":" + client.remotePort]
+        forwardClient[forwardClient.length] = {'connection': true, 'host': connection.remoteAddress + ":" + connection.remotePort}
+      }
       buffer.pipe(connection)
       buffer.resume()
     })
@@ -111,6 +131,19 @@ function duplicator(cb) {
 
     // Has this connection already been forwarded?
     var wasConnectionForwarded = false
+    forwards[client.remoteAddress + ":" + client.remotePort] = []
+
+    client.on('data', (data) => {
+      let forwardClient = forwards[client.remoteAddress + ":" + client.remotePort]
+      forwardClient.forEach(function(item, index, array) {
+        if (item.connection == false) {
+          let reconnect = item.host
+          forwards[client.remoteAddress + ":" + client.remotePort].splice(index, 1)
+          pipe(client, reconnect)
+        }
+      });
+      
+    });
 
     /**
      * Public: Forward the stream to a host, sending the response back to the
