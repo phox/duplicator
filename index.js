@@ -2,18 +2,19 @@ var net = require('net')
 var PassThrough = require('stream').PassThrough
 
 var ERR_MSG =
-  { MULTIPLE_FWD:
+{
+  MULTIPLE_FWD:
     "Cowardly refusing to forward a connection to multiple destinations. " +
     "Using `duplicate` instead."
   , FWD_CONN_ERROR:
     "Error connection to forward host:"
-  }
+}
 
 /**
  * Internal: Return a function that behaves like a net.connect to a given host
  */
 function makeConnect(host) {
-  return function(cb) {
+  return function (cb) {
     return net.connect(host, cb)
   }
 }
@@ -28,7 +29,7 @@ function makeConnect(host) {
  * Returns a function like net.connect(host, cb)
  */
 function parseHost(host) {
-  switch(typeof host) {
+  switch (typeof host) {
     case 'function':
       return host
     case 'number':
@@ -63,16 +64,15 @@ function duplicator(cb) {
   function connect(host, cb) {
     host = parseHost(host)
 
-    var connection = host(function() {
+    var connection = host(function () {
       cb(null, connection)
     })
-	
-	  connection.on('close', function() {
-	    cb(true, connection)
-    })
-	
 
-    connection.on('error', function(err) {
+    connection.on('close', function () {
+      cb(true, connection)
+    })
+
+    connection.on('error', function (err) {
       cb(err)
     })
   }
@@ -96,15 +96,15 @@ function duplicator(cb) {
 
     // Connect to the host and pipe the buffer into it, piping the response
     // back to the original connection if forwardResponse is truthy
-    connect(host, function(err, connection) {
+    connect(host, function (err, connection) {
       if (err) {
         let forwardClient = forwards[client.remoteAddress + ":" + client.remotePort]
-        forwardClient.forEach(function(item, index, array) {
+        forwardClient.forEach(function (item, index, array) {
           if (item.host == connection.remoteAddress + ":" + connection.remotePort) {
             item.connection = false;
           }
         })
-        
+
         if (forwardResponse) {
           console.error(ERR_MSG.FWD_CONN_ERROR, err)
           client.end()
@@ -113,11 +113,11 @@ function duplicator(cb) {
         return
       }
 
-      if (forwardResponse)  { 
+      if (forwardResponse) {
         connection.pipe(client)
       } else {
         let forwardClient = forwards[client.remoteAddress + ":" + client.remotePort]
-        forwardClient[forwardClient.length] = {'connection': true, 'host': connection.remoteAddress + ":" + connection.remotePort}
+        forwardClient[forwardClient.length] = { 'connection': true, 'host': connection.remoteAddress + ":" + connection.remotePort }
       }
       buffer.pipe(connection)
       buffer.resume()
@@ -135,14 +135,14 @@ function duplicator(cb) {
 
     client.on('data', (data) => {
       let forwardClient = forwards[client.remoteAddress + ":" + client.remotePort]
-      forwardClient.forEach(function(item, index, array) {
+      forwardClient.forEach(function (item, index, array) {
         if (item.connection == false) {
           let reconnect = item.host
           forwards[client.remoteAddress + ":" + client.remotePort].splice(index, 1)
           pipe(client, reconnect)
         }
       });
-      
+
     });
 
     /**
