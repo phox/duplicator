@@ -1,8 +1,10 @@
-# duplicator [![build status](https://secure.travis-ci.org/agnoster/duplicator.png?branch=master)](http://travis-ci.org/agnoster/duplicator)
+# duplicator [![Build Status](https://travis-ci.org/phox/duplicator.svg?branch=master)](https://travis-ci.org/phox/duplicator)
 
 > TCP proxy that also duplicates traffic to a secondary host
 
-I built this because I needed a way to "tap" production traffic and shoot it at a new system to see how it handles load.
+> Fork from [agnoster's repo](https://github.com/agnoster/duplicator)
+
+> Add auto reconnect secondary host.
 
 # usage (cli)
 
